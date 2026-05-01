@@ -38,6 +38,8 @@ func NewDownloader(cfg *cfg.DownloadConfig, httpClient *util.HttpClient, filterL
 			slskdClient := NewSlskd(cfg.Slskd, cfg.DownloadDir)
 			slskdClient.AddHeader()
 			downloader = append(downloader, slskdClient)
+		case "deezer":
+			downloader = append(downloader, NewDeezer(cfg.Deezer.URL, httpClient))
 		default:
 			return nil, fmt.Errorf("downloader '%s' not supported", service)
 		}
@@ -59,7 +61,7 @@ func (c *DownloadClient) StartDownload(tracks *[]*models.Track) {
 		}
 	}
 
-	for _, d := range c.Downloaders {
+	for i, d := range c.Downloaders {
 		var g errgroup.Group
 		g.SetLimit(1)
 
@@ -68,14 +70,15 @@ func (c *DownloadClient) StartDownload(tracks *[]*models.Track) {
 				continue
 			}
 
+			trackCopy := track
 			g.Go(func() error {
 
-				if err := d.QueryTrack(track); err != nil {
-					slog.Warn(err.Error())
+				if err := d.QueryTrack(trackCopy); err != nil {
+					slog.Warn("QueryTrack failed", "track", trackCopy.Title, "error", err)
 					return nil
 				}
-				if err := d.GetTrack(track); err != nil {
-					slog.Warn(err.Error())
+				if err := d.GetTrack(trackCopy); err != nil {
+					slog.Warn("GetTrack failed", "track", trackCopy.Title, "error", err)
 					return nil
 				}
 				return nil

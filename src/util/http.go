@@ -1,10 +1,12 @@
 package util
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
@@ -16,14 +18,30 @@ type HttpClientConfig struct {
 }
 
 type HttpClient struct {
-	Client *http.Client
+	Client    *http.Client
 	UserAgent string
 }
 
 func NewHttp(cfg HttpClientConfig) *HttpClient {
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		Resolver: &net.Resolver{
+			Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+				d := net.Dialer{Timeout: 5 * time.Second}
+				return d.DialContext(ctx, "tcp4", address)
+			},
+		},
+	}
+
+	transport := &http.Transport{
+		DialContext: dialer.DialContext,
+	}
+
 	return &HttpClient{
 		Client: &http.Client{
-			Timeout: time.Duration(cfg.Timeout) * time.Second,
+			Timeout:   time.Duration(cfg.Timeout) * time.Second,
+			Transport: transport,
 		},
 		UserAgent: "Explo (+https://github.com/LumePart/explo))",
 	}

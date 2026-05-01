@@ -78,6 +78,7 @@ type DownloadConfig struct {
 	Youtube         Youtube
 	YoutubeMusic    YoutubeMusic
 	Slskd           Slskd
+	Deezer          Deezer
 	ExcludeLocal    bool
 	KeepPermissions bool     `env:"KEEP_PERMISSIONS" env-default:"true"` // keep original file permissions when migrating download
 	RenameTrack     bool     `env:"RENAME_TRACK" env-default:"false"`    // Rename track in {title}-{artist} format
@@ -125,6 +126,10 @@ type SlskdMon struct {
 	Duration time.Duration `env:"SLSKD_MONITOR_DURATION" env-default:"15m"`
 }
 
+type Deezer struct {
+	URL string `env:"DEEZER_URL"`
+}
+
 type DiscoveryConfig struct {
 	Discovery    string `env:"DISCOVERY_SERVICE" env-default:"listenbrainz"`
 	Listenbrainz Listenbrainz
@@ -161,10 +166,12 @@ type HttpNotif struct {
 func (cfg *Config) ReadEnv() {
 
 	// Try to read from .env file first
+	slog.Debug("attempting to read config", "config_path", cfg.Flags.CfgPath)
 	err := cleanenv.ReadConfig(cfg.Flags.CfgPath, cfg)
 	if err != nil {
 		// If the error is because the file doesn't exist, fallback to env vars
 		if errors.Is(err, os.ErrNotExist) {
+			slog.Info("config file not found, reading from environment variables", "path", cfg.Flags.CfgPath)
 			if err := cleanenv.ReadEnv(&cfg); err != nil {
 				slog.Error("failed to load config from env vars", "context", err.Error())
 				os.Exit(1)
@@ -173,6 +180,9 @@ func (cfg *Config) ReadEnv() {
 			slog.Error("failed to load config file", "path", cfg.Flags.CfgPath, "context", err.Error())
 			os.Exit(1)
 		}
+	} else {
+		slog.Info("config file loaded successfully", "path", cfg.Flags.CfgPath)
+		slog.Debug("download services loaded", "services", cfg.DownloadCfg.Services)
 	}
 
 	cfg.CommonFixes()
@@ -182,6 +192,7 @@ func (cfg *Config) CommonFixes() {
 	cfg.DownloadCfg.Youtube.FileExtension = strings.TrimPrefix(cfg.DownloadCfg.Youtube.FileExtension, ".")
 	cfg.ClientCfg.URL = fixBaseURL(cfg.ClientCfg.URL)
 	cfg.DownloadCfg.Slskd.URL = fixBaseURL(cfg.DownloadCfg.Slskd.URL)
+	cfg.DownloadCfg.Deezer.URL = fixBaseURL(cfg.DownloadCfg.Deezer.URL)
 	cfg.NormalizeDir()
 }
 

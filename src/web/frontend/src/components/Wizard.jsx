@@ -243,7 +243,7 @@ function Step2({ fields, setField, envSources, onBack, onNext, saving }) {
 
 function Step3({ fields, setField, envSources, onBack, onFinish, saving }) {
   const { downloadDir, useSubdirectory, migrateDownloads, dlServices,
-          youtubeApiKey, trackExtension, filterList, slskdUrl, slskdApiKey } = fields
+          youtubeApiKey, trackExtension, filterList, slskdUrl, slskdApiKey, deezerUrl } = fields
   const isLocked = key => envSources[key] === 'env'
   const showDownloadDir = dlServices.youtube || (dlServices.slskd && migrateDownloads)
 
@@ -251,6 +251,7 @@ function Step3({ fields, setField, envSources, onBack, onFinish, saving }) {
     if (!Object.values(dlServices).some(Boolean)) return false
     if (showDownloadDir && !downloadDir.trim()) return false
     if (dlServices.slskd && (!slskdUrl.trim() || !slskdApiKey.trim())) return false
+    if (dlServices.deezer && !deezerUrl.trim()) return false
     return true
   }
 
@@ -347,6 +348,26 @@ function Step3({ fields, setField, envSources, onBack, onFinish, saving }) {
             </div>
           )}
         </div>
+
+        <div>
+          <ToggleRow
+            checked={dlServices.deezer}
+            onChange={v => setField('dlServices', { ...dlServices, deezer: v })}
+            name="Deezer"
+            desc="Downloads from Deezer · requires a running deezer-downloader instance"
+          />
+          {dlServices.deezer && (
+            <div className="mt-3 pl-4 border-l-2 border-ui-border flex flex-col gap-4">
+              <TextField label="Deezer Downloader URL">
+                <input type="text" className={inputCls} value={deezerUrl} onChange={e => setField('deezerUrl', e.target.value)}
+                  placeholder="e.g. http://192.168.1.100:8888" disabled={isLocked('DEEZER_URL')} />
+              </TextField>
+              <p className="text-[12px] text-muted leading-relaxed">
+                URL of your <a href="https://github.com/kmille/deezer-downloader" target="_blank" rel="noreferrer" className="text-accent">deezer-downloader</a> instance.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-8 flex">
@@ -406,12 +427,13 @@ export default function Wizard({ config, envSources, onComplete }) {
       downloadDir:      config.DOWNLOAD_DIR || '',
       useSubdirectory:  config.USE_SUBDIRECTORY !== 'false',
       migrateDownloads: config.MIGRATE_DOWNLOADS === 'true',
-      dlServices:       { youtube: s.includes('youtube'), slskd: s.includes('slskd') },
+      dlServices:       { youtube: s.includes('youtube'), slskd: s.includes('slskd'), deezer: s.includes('deezer') },
       youtubeApiKey:    config.YOUTUBE_API_KEY || '',
       trackExtension:   config.TRACK_EXTENSION || '',
       filterList:       config.FILTER_LIST || '',
       slskdUrl:         config.SLSKD_URL || '',
       slskdApiKey:      config.SLSKD_API_KEY || '',
+      deezerUrl:        config.DEEZER_URL || '',
     }
   })
 
@@ -464,6 +486,7 @@ export default function Wizard({ config, envSources, onComplete }) {
         migrate_downloads: fields.migrateDownloads, download_services: services,
         youtube_api_key: fields.youtubeApiKey, track_extension: fields.trackExtension,
         filter_list: fields.filterList, slskd_url: fields.slskdUrl, slskd_api_key: fields.slskdApiKey,
+        deezer_url: fields.deezerUrl,
       })
       onComplete()
     } catch (e) {

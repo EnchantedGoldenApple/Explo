@@ -86,7 +86,7 @@ var allConfigKeys = []string{
 	"SYSTEM_USERNAME", "SYSTEM_PASSWORD", "PLAYLIST_DIR", "SLEEP", "PUBLIC_PLAYLIST",
 	"DOWNLOAD_DIR", "USE_SUBDIRECTORY",
 	"DOWNLOAD_SERVICES", "YOUTUBE_API_KEY", "TRACK_EXTENSION", "FILTER_LIST",
-	"SLSKD_URL", "SLSKD_API_KEY",
+	"SLSKD_URL", "SLSKD_API_KEY", "DEEZER_URL",
 	"WIZARD_COMPLETE",
 }
 
@@ -203,6 +203,14 @@ var configFields = []FieldDef{
 		Type: "text", Section: "downloader",
 		VisibleWhen:  &Condition{Field: "DOWNLOAD_SERVICES", Contains: "slskd"},
 		RequiredWhen: &Condition{Field: "DOWNLOAD_SERVICES", Contains: "slskd"},
+	},
+	{
+		Key: "DEEZER_URL", Label: "Deezer Downloader URL",
+		Type: "url", Section: "downloader",
+		Placeholder:  "e.g. http://192.168.1.100:8888",
+		Hint:         "URL of the deezer-downloader service (https://github.com/kmille/deezer-downloader)",
+		VisibleWhen:  &Condition{Field: "DOWNLOAD_SERVICES", Contains: "deezer"},
+		RequiredWhen: &Condition{Field: "DOWNLOAD_SERVICES", Contains: "deezer"},
 	},
 }
 
@@ -630,6 +638,7 @@ func (s *Server) handleWizardStep3(w http.ResponseWriter, r *http.Request) {
 		FilterList       string   `json:"filter_list"`
 		SlskdURL         string   `json:"slskd_url"`
 		SlskdAPIKey      string   `json:"slskd_api_key"`
+		DeezerURL        string   `json:"deezer_url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
@@ -642,8 +651,13 @@ func (s *Server) handleWizardStep3(w http.ResponseWriter, r *http.Request) {
 	joined := strings.Join(body.DownloadServices, ",")
 	hasYoutube := strings.Contains(joined, "youtube")
 	hasSlskd := strings.Contains(joined, "slskd")
+	hasDeezer := strings.Contains(joined, "deezer")
 	if (hasYoutube || (hasSlskd && body.MigrateDownloads)) && body.DownloadDir == "" {
 		http.Error(w, "download_dir is required", http.StatusBadRequest)
+		return
+	}
+	if hasDeezer && body.DeezerURL == "" {
+		http.Error(w, "deezer_url is required when deezer service is enabled", http.StatusBadRequest)
 		return
 	}
 
@@ -665,6 +679,7 @@ func (s *Server) handleWizardStep3(w http.ResponseWriter, r *http.Request) {
 		"FILTER_LIST":       body.FilterList,
 		"SLSKD_URL":         body.SlskdURL,
 		"SLSKD_API_KEY":     body.SlskdAPIKey,
+		"DEEZER_URL":        body.DeezerURL,
 		"WIZARD_COMPLETE":   "true",
 	}
 
